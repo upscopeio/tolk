@@ -2,6 +2,8 @@ module Tolk
   class Phrase < ApplicationRecord
     self.table_name = 'tolk_phrases'
 
+    default_scope { where("tolk_phrases.key LIKE 't\\_%'") }
+
     validates_uniqueness_of :key
 
     paginates_per 30
@@ -22,10 +24,6 @@ module Tolk
 
     scope :containing_text, lambda { |query|
       where("tolk_phrases.key LIKE 't\\_%#{query}'")
-    }
-
-    scope :start_with_t, lambda {
-      where("tolk_phrases.key LIKE 't\\_%'")
     }
   end
 end

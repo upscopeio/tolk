@@ -104,7 +104,7 @@ module Tolk
     end
 
     def phrases_without_translation(page = nil)
-      phrases = Tolk::Phrase.start_with_t
+      phrases = Tolk::Phrase.all
 
       existing_ids = translations.pluck(:phrase_id).uniq
       phrases = phrases.where('tolk_phrases.id NOT IN (?)', existing_ids) if existing_ids.present?
@@ -131,7 +131,7 @@ module Tolk
                        self.translations.containing_text(query)
                      end
 
-      phrases = Tolk::Phrase.start_with_t
+      phrases = Tolk::Phrase.all
       phrases = phrases.containing_text(key_query)
 
       phrases = phrases.where('tolk_phrases.id IN(?)', translations.map(&:phrase_id).uniq)
@@ -141,7 +141,7 @@ module Tolk
     def search_phrases_without_translation(query, page = nil)
       return phrases_without_translation(page) unless query.present?
 
-      phrases = Tolk::Phrase.start_with_t
+      phrases = Tolk::Phrase.all
 
       found_translations_ids = Tolk::Locale.primary_locale.translations.where(['tolk_translations.text LIKE ?',
                                                                                "%#{query}%"]).to_a.map(&:phrase_id).uniq
@@ -234,7 +234,7 @@ module Tolk
     end
 
     def find_phrases_with_translations(page, conditions = {})
-      result = Tolk::Phrase.start_with_t.where({ 'tolk_translations.locale_id': id }.merge(conditions)).joins(:translations).order('tolk_phrases.key ASC').public_send(
+      result = Tolk::Phrase.where({ 'tolk_translations.locale_id': id }.merge(conditions)).joins(:translations).order('tolk_phrases.key ASC').public_send(
         pagination_method, page
       )
 
