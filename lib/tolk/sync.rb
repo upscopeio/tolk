@@ -79,7 +79,7 @@ module Tolk
 
         translations.each do |key, value|
           next if value.is_a?(Proc)
-          next if key.starts_with?('t_')
+          next unless key.starts_with?('t_')
 
           # Create phrase and primary translation if missing
           phrase = phrases_by_key[key] || Tolk::Phrase.create!(key: key)
