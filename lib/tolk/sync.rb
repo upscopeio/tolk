@@ -14,26 +14,25 @@ module Tolk
           # bypass default init_translations
           I18n.backend.reload! if I18n.backend.initialized?
           I18n.backend.instance_variable_set(:@initialized, true)
-          translations_files = Dir[Rails.root.join('config', 'locales', "*.{rb,yml}")]
+          translations_files = Dir[Rails.root.join('config', 'locales', '*.{rb,yml}')]
 
           if Tolk.config.block_xxx_en_yml_locale_files
-            locale_block_filter = Proc.new {
-              |l| ['.', '..'].include?(l) ||
+            locale_block_filter = proc do |l|
+              ['.', '..'].include?(l) ||
                 !l.ends_with?('.yml') ||
-                l.split("/").last.match(/(.*\.){2,}/) # reject files of type xxx.en.yml
-            }
-            translations_files =  translations_files.reject(&locale_block_filter)
-          end
-
-          if Tolk.config.ignore_locale_files.present?
-            locale_block_filter = Proc.new do |file_name|
-              directory_path = Rails.root.join('config', 'locales', 'final_separator').to_s.gsub("final_separator", "")
-              normalized_file_name = file_name.gsub(directory_path, "").split('.').first
-              Tolk.config.ignore_locale_files.include?(normalized_file_name)
+                l.split('/').last.match(/(.*\.){2,}/) # reject files of type xxx.en.yml
             end
             translations_files =  translations_files.reject(&locale_block_filter)
           end
 
+          if Tolk.config.ignore_locale_files.present?
+            locale_block_filter = proc do |file_name|
+              directory_path = Rails.root.join('config', 'locales', 'final_separator').to_s.gsub('final_separator', '')
+              normalized_file_name = file_name.gsub(directory_path, '').split('.').first
+              Tolk.config.ignore_locale_files.include?(normalized_file_name)
+            end
+            translations_files = translations_files.reject(&locale_block_filter)
+          end
 
           I18n.backend.load_translations(translations_files)
         else
@@ -45,9 +44,9 @@ module Tolk
       end
 
       def read_primary_locale_file
-        primary_file = "#{self.locales_config_path}/#{self.primary_locale_name}.yml"
+        primary_file = "#{locales_config_path}/#{primary_locale_name}.yml"
         if File.exist?(primary_file)
-          flat_hash(Tolk::YAML.load_file(primary_file)[self.primary_locale_name])
+          flat_hash(Tolk::YAML.load_file(primary_file)[primary_locale_name])
         else
           {}
         end
@@ -73,22 +72,24 @@ module Tolk
         primary_locale = self.primary_locale
 
         # Handle deleted phrases
-        Tolk::Phrase.where.not(:key => translations.keys).destroy_all
+        Tolk::Phrase.where.not(key: translations.keys).destroy_all
 
         phrases_by_key = Tolk::Phrase.all.index_by(&:key)
         primary_translation_by_phrase_id = primary_locale.translations.index_by(&:phrase_id)
 
         translations.each do |key, value|
           next if value.is_a?(Proc)
+          next unless key.starts_with?('t_')
+
           # Create phrase and primary translation if missing
-          phrase = phrases_by_key[key] || Tolk::Phrase.create!(:key => key)
+          phrase = phrases_by_key[key] || Tolk::Phrase.create!(key: key)
           translation = primary_translation_by_phrase_id[phrase.id]
-          translation ||= primary_locale.translations.build(:phrase => phrase)
+          translation ||= primary_locale.translations.build(phrase: phrase)
           translation.text = value
 
           if translation.changed? && !translation.new_record?
             # Set the primary updated flag if the primary translation has changed and it is not a new record.
-            phrase.translations.where.not(:locale_id => primary_locale.id).update_all({ :primary_updated => true })
+            phrase.translations.where.not(locale_id: primary_locale.id).update_all({ primary_updated: true })
           end
 
           translation.primary = true
@@ -97,7 +98,7 @@ module Tolk
       end
 
       def filter_out_i18n_keys(flat_hash)
-        flat_hash.reject { |key, value| key.starts_with? "i18n" }
+        flat_hash.reject { |key, _value| key.starts_with? 'i18n' }
       end
 
       def filter_out_ignored_keys(flat_hash)

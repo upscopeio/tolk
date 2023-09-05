@@ -2,8 +2,6 @@ module Tolk
   class Phrase < ApplicationRecord
     self.table_name = 'tolk_phrases'
 
-    default_scope { where("tolk_phrases.key LIKE 't\\_%'") }
-
     validates_uniqueness_of :key
 
     paginates_per 30
